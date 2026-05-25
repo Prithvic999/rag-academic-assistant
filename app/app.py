@@ -110,7 +110,7 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # Securely retrieve the API key without asking the user
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv(AIzaSyAPPYF32vmiXx3zo5iGdRQ5gMam8RfdkiQ)
     
     if api_key:
         st.success("✅ API Key Secured")
