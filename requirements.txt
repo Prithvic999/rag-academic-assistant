@@ -7,3 +7,4 @@ numpy
 scipy
 pypdf
 google-genai
+python-dotenv
