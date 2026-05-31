@@ -4,7 +4,7 @@ import streamlit as st
 import numpy as np
 import faiss
 from pypdf import PdfReader
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from sentence_transformers import SentenceTransformer
 from google import genai
 from dotenv import load_dotenv
 
@@ -65,11 +65,11 @@ if "analysis_output" not in st.session_state:
 # -----------------------------------
 @st.cache_resource
 def load_models():
+    # Only load the SentenceTransformer for the Single-Stage Pipeline (much faster)
     embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-    reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-    return embedder, reranker
+    return embedder
 
-embedding_model, reranker_model = load_models()
+embedding_model = load_models()
 
 # -----------------------------------
 # CORE RAG PROCESSING FUNCTIONS
@@ -114,13 +114,12 @@ def format_chat_for_export(messages):
     export_text = f"--- Academic RAG Session Export ---\n"
     export_text += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     for msg in messages:
-        # Corrected Name Here
         role = "Prithvi Chauhan" if msg["role"] == "user" else "AI Assistant"
         export_text += f"{role}:\n{msg['content']}\n\n"
         if "sources" in msg and msg["sources"]:
             export_text += "Sources Used:\n"
             for idx, src in enumerate(msg["sources"]):
-                export_text += f"  [{idx+1}] {src['source']} (Page {src['page']}) - Score: {src['score']:.2f}\n"
+                export_text += f"  [{idx+1}] {src['source']} (Page {src['page']})\n"
             export_text += "\n"
         export_text += "-" * 40 + "\n\n"
     return export_text
@@ -136,7 +135,6 @@ with st.sidebar:
     ### Features
     ✅ Multi-PDF Support  
     ✅ Semantic Vector Search  
-    ✅ Cross-Encoder Reranking  
     ✅ Context-Grounded Answers  
     ✅ Auto-Paper Analysis  
     """)
@@ -187,7 +185,6 @@ with st.sidebar:
                 st.success(f"Processed {len(pdf_docs)} documents into {len(chunks_metadata)} searchable chunks.")
 
     st.divider()
-    # Corrected Name Here
     st.markdown("""
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
         Built by Prithvi Chauhan<br>
@@ -205,13 +202,43 @@ if st.session_state.chunks_metadata:
     doc_names = list(set([chunk["source"] for chunk in st.session_state.chunks_metadata]))
     col1.metric("📄 PDFs Loaded", len(doc_names))
     col2.metric("🧩 Knowledge Chunks", len(st.session_state.chunks_metadata))
-    col3.metric("🧠 Active Index", "FAISS Ready")
+    col3.metric("🧠 Retrieval Engine", "Semantic FAISS")
     st.divider()
 
 tab1, tab2, tab3, tab4 = st.tabs(["💬 Interactive Chat", "📝 Document Summary", "❓ Viva & Exam Prep", "🔬 Paper Analysis"])
 
 # --- TAB 1: CHAT INTERFACE ---
 with tab1:
+    # Empty State UI (Sample Questions & Architecture)
+    if not st.session_state.messages and st.session_state.chunks_metadata:
+        st.markdown("""
+        <div style="text-align: center; margin-top: 40px; margin-bottom: 30px; opacity: 0.8;">
+            <h3>👋 Welcome to your Academic Assistant</h3>
+            <p>Your documents are indexed and ready. Try asking a question like:</p>
+            <ul style="list-style-type: none; padding: 0; font-size: 1.1em;">
+                <li><i>"What are the main objectives of these papers?"</i></li>
+                <li><i>"Explain the methodology used in simple terms."</i></li>
+                <li><i>"What are the limitations mentioned in the research?"</i></li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        with st.expander("⚙️ View System Architecture"):
+            st.code('''
+    📄 Document Upload
+          ↓
+    ✂️ Text Chunking (500 tokens)
+          ↓
+    🧠 Embedding (all-MiniLM-L6-v2)
+          ↓
+    🗄️ FAISS Semantic Retrieval
+          ↓
+    🤖 LLM Generation (Gemini 2.5 Flash)
+          ↓
+    📚 Grounded Answer + Citations
+            ''', language='text')
+
+    # Render existing chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -220,12 +247,12 @@ with tab1:
                     for idx, src in enumerate(message["sources"]):
                         st.markdown(f"""
                         <div class="source-card">
-                            <strong>Source {idx+1}:</strong> {src['source']} (Page {src['page']})<br>
-                            <span style="color: #6B7280; font-size: 0.9em;">Relevance Score: {src['score']:.2f}</span>
+                            <strong>Source {idx+1}:</strong> {src['source']} (Page {src['page']})
                         </div>
                         """, unsafe_allow_html=True)
                         st.caption(f'"{src["text"]}"')
 
+    # Chat Input Box
     if prompt_text := st.chat_input("Ask a question about your uploaded documents..."):
         if not api_key:
             st.error("Please configure your Gemini API Key in the environment variables.")
@@ -239,19 +266,13 @@ with tab1:
         st.session_state.messages.append({"role": "user", "content": prompt_text})
         
         with st.chat_message("assistant"):
-            with st.spinner("Retrieving via FAISS and Reranking..."):
+            with st.spinner("Retrieving via FAISS..."):
                 question_embedding = np.array(embedding_model.encode([prompt_text])).astype('float32')
-                _, indices = st.session_state.index.search(question_embedding, k=10)
                 
-                broad_chunks = [st.session_state.chunks_metadata[i] for i in indices[0] if i < len(st.session_state.chunks_metadata)]
+                # Fetching top 4 directly via FAISS
+                _, indices = st.session_state.index.search(question_embedding, k=4)
                 
-                cross_input = [[prompt_text, chunk["chunk_text"]] for chunk in broad_chunks]
-                rerank_scores = reranker_model.predict(cross_input)
-                
-                for i in range(len(broad_chunks)):
-                    broad_chunks[i]["rerank_score"] = rerank_scores[i]
-                    
-                best_chunks = sorted(broad_chunks, key=lambda x: x["rerank_score"], reverse=True)[:4]
+                best_chunks = [st.session_state.chunks_metadata[i] for i in indices[0] if i < len(st.session_state.chunks_metadata)]
                 
                 retrieved_sources = []
                 context_text = ""
@@ -259,8 +280,7 @@ with tab1:
                     retrieved_sources.append({
                         "source": chunk["source"],
                         "page": chunk["page_num"],
-                        "text": chunk["chunk_text"],
-                        "score": float(chunk["rerank_score"])
+                        "text": chunk["chunk_text"]
                     })
                     context_text += f"[DOCUMENT: {chunk['source']} | PAGE: {chunk['page_num']}]\n{chunk['chunk_text']}\n\n---\n\n"
                 
@@ -294,8 +314,7 @@ with tab1:
                     for idx, src in enumerate(retrieved_sources):
                         st.markdown(f"""
                         <div class="source-card">
-                            <strong>Source {idx+1}:</strong> {src['source']} (Page {src['page']})<br>
-                            <span style="color: #6B7280; font-size: 0.9em;">Relevance Score: {src['score']:.2f}</span>
+                            <strong>Source {idx+1}:</strong> {src['source']} (Page {src['page']})
                         </div>
                         """, unsafe_allow_html=True)
                         st.caption(f'"{src["text"]}"')
