@@ -150,7 +150,49 @@ with st.sidebar:
                 st.session_state.chunks_metadata = chunks_metadata
                 st.session_state.messages = []
                 st.success(f"Successfully indexed {len(chunks_metadata)} chunks!")
+# --- ADD THIS TO THE VERY BOTTOM OF YOUR SIDEBAR ---
+    st.divider()
+    st.header("🛠️ One-Click Tools")
+    
+    # Only show these tools IF a document has been uploaded and processed
+    if st.session_state.chunks_metadata:
+        
+        # 4. PDF Summarizer
+        if st.button("📝 Generate Summary", use_container_width=True):
+            with st.spinner("Summarizing document..."):
+                full_text = "\n".join([chunk["chunk_text"] for chunk in st.session_state.chunks_metadata])
+                prompt = f"Analyze the following academic text. Provide: 1. An Abstract summary, 2. Key findings, 3. Conclusion.\n\nTEXT:\n{full_text}"
+                
+                client = genai.Client(api_key=api_key)
+                response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                
+                # Add the response to the chat interface
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.rerun()
+                
+        # 5. Question Generator
+        if st.button("❓ Generate Viva Questions", use_container_width=True):
+            with st.spinner("Generating exam questions..."):
+                full_text = "\n".join([chunk["chunk_text"] for chunk in st.session_state.chunks_metadata[:15]]) # Limit to first 15 chunks to save time
+                prompt = f"Act as a university professor. Based on this text, generate: 5 Short Answer Questions, 5 Long Essay Questions, and 5 tricky Viva/Oral Exam Questions.\n\nTEXT:\n{full_text}"
+                
+                client = genai.Client(api_key=api_key)
+                response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.rerun()
 
+        # 6. Paper Analyzer
+        if st.button("🔬 Analyze Research Paper", use_container_width=True):
+            with st.spinner("Analyzing research structure..."):
+                full_text = "\n".join([chunk["chunk_text"] for chunk in st.session_state.chunks_metadata])
+                prompt = f"Analyze this research paper and extract the following exactly: Title, Objective, Methodology, Dataset (if any), Results, Limitations, and Future Work.\n\nTEXT:\n{full_text}"
+                
+                client = genai.Client(api_key=api_key)
+                response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.rerun()
 # -----------------------------------
 # MAIN CHAT UI & RERANKING PIPELINE
 # -----------------------------------
