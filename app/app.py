@@ -359,11 +359,29 @@ with tab4:
     st.header("🔬 Deep Research Analysis")
     if st.session_state.chunks_metadata:
         if st.button("Analyze Research Structure", key="btn_analysis"):
-            with st.spinner("Deconstructing research methodology..."):
-                full_text = "\n".join([chunk["chunk_text"] for chunk in st.session_state.chunks_metadata])
-                prompt = f"Analyze this research paper and extract the following exactly: Title, Objective, Methodology, Dataset (if any), Results, Limitations, and Future Work.\n\nTEXT:\n{full_text}"
+            with st.spinner("Deconstructing research methodology per document..."):
                 client = genai.Client(api_key=api_key)
-                st.session_state.analysis_output = client.models.generate_content(model='gemini-2.5-flash', contents=prompt).text
+                st.session_state.analysis_output = ""
+                
+                # Group chunks by document
+                document_groups = {}
+                for chunk in st.session_state.chunks_metadata:
+                    source = chunk["source"]
+                    if source not in document_groups:
+                        document_groups[source] = []
+                    document_groups[source].append(chunk["chunk_text"])
+                
+                # Analyze each document separately
+                for doc_name, doc_chunks in document_groups.items():
+                    doc_text = "\n".join(doc_chunks)
+                    prompt = f"Analyze this research paper ({doc_name}) and extract the following exactly: Title, Objective, Methodology, Dataset (if any), Results, Limitations, and Future Work.\n\nTEXT:\n{doc_text}"
+                    
+                    try:
+                        response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                        st.session_state.analysis_output += f"### 🔬 {doc_name}\n{response.text}\n\n---\n\n"
+                    except Exception as e:
+                        st.session_state.analysis_output += f"### 🔬 {doc_name}\nError: {e}\n\n---\n\n"
+                        
         if st.session_state.analysis_output:
             st.markdown(st.session_state.analysis_output)
     else:
