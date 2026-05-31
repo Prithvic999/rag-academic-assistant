@@ -114,7 +114,8 @@ def format_chat_for_export(messages):
     export_text = f"--- Academic RAG Session Export ---\n"
     export_text += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     for msg in messages:
-        role = "Kushagra" if msg["role"] == "user" else "AI Assistant"
+        # Corrected Name Here
+        role = "Prithvi Chauhan" if msg["role"] == "user" else "AI Assistant"
         export_text += f"{role}:\n{msg['content']}\n\n"
         if "sources" in msg and msg["sources"]:
             export_text += "Sources Used:\n"
@@ -166,7 +167,6 @@ with st.sidebar:
         if not pdf_docs:
             st.warning("Please upload at least one PDF.")
         else:
-            # Replaced spinner with a modern status container
             with st.status("📚 Processing Academic Documents...", expanded=True) as status:
                 st.write("Extracting text and formatting pages...")
                 pages_data = get_pdf_pages_with_metadata(pdf_docs)
@@ -178,7 +178,6 @@ with st.sidebar:
                 st.session_state.index = build_vector_store(chunks_metadata)
                 st.session_state.chunks_metadata = chunks_metadata
                 
-                # Reset tool outputs on new document load
                 st.session_state.summary_output = ""
                 st.session_state.viva_output = ""
                 st.session_state.analysis_output = ""
@@ -188,9 +187,10 @@ with st.sidebar:
                 st.success(f"Processed {len(pdf_docs)} documents into {len(chunks_metadata)} searchable chunks.")
 
     st.divider()
+    # Corrected Name Here
     st.markdown("""
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
-        Built by Kushagra Chaudhary<br>
+        Built by Prithvi Chauhan<br>
         Powered by FAISS • Gemini • Sentence Transformers
     </div>
     """, unsafe_allow_html=True)
@@ -200,17 +200,14 @@ with st.sidebar:
 # -----------------------------------
 st.title("📚 Academic RAG Assistant")
 
-# Dashboard Metrics
 if st.session_state.chunks_metadata:
     col1, col2, col3 = st.columns(3)
-    # Get unique document names
     doc_names = list(set([chunk["source"] for chunk in st.session_state.chunks_metadata]))
     col1.metric("📄 PDFs Loaded", len(doc_names))
     col2.metric("🧩 Knowledge Chunks", len(st.session_state.chunks_metadata))
     col3.metric("🧠 Active Index", "FAISS Ready")
     st.divider()
 
-# Create structured tabs for the workspace
 tab1, tab2, tab3, tab4 = st.tabs(["💬 Interactive Chat", "📝 Document Summary", "❓ Viva & Exam Prep", "🔬 Paper Analysis"])
 
 # --- TAB 1: CHAT INTERFACE ---
@@ -221,7 +218,6 @@ with tab1:
             if message["role"] == "assistant" and "sources" in message:
                 with st.expander("🔍 View Retrieved Sources"):
                     for idx, src in enumerate(message["sources"]):
-                        # Upgraded Source Display
                         st.markdown(f"""
                         <div class="source-card">
                             <strong>Source {idx+1}:</strong> {src['source']} (Page {src['page']})<br>
@@ -315,7 +311,6 @@ with tab2:
                 client = genai.Client(api_key=api_key)
                 st.session_state.summary_output = ""
                 
-                # Step 1: Group all text chunks by their specific PDF filename
                 document_groups = {}
                 for chunk in st.session_state.chunks_metadata:
                     source = chunk["source"]
@@ -323,14 +318,12 @@ with tab2:
                         document_groups[source] = []
                     document_groups[source].append(chunk["chunk_text"])
                 
-                # Step 2: Loop through each PDF and ask Gemini to summarize it individually
                 for doc_name, doc_chunks in document_groups.items():
                     doc_text = "\n".join(doc_chunks)
                     prompt = f"Analyze the following academic text from the document '{doc_name}'. Provide: 1. An Abstract summary, 2. Key findings, 3. Conclusion.\n\nTEXT:\n{doc_text}"
                     
                     try:
                         response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
-                        # Add a clean header for each paper so it looks beautiful in the UI
                         st.session_state.summary_output += f"### 📄 {doc_name}\n{response.text}\n\n---\n\n"
                     except Exception as e:
                         st.session_state.summary_output += f"### 📄 {doc_name}\nError generating summary: {e}\n\n---\n\n"
@@ -339,6 +332,7 @@ with tab2:
             st.markdown(st.session_state.summary_output)
     else:
         st.info("Upload a document to generate a summary.")
+
 # --- TAB 3: QUESTION GENERATOR ---
 with tab3:
     st.header("❓ Viva & Exam Generator")
@@ -363,7 +357,6 @@ with tab4:
                 client = genai.Client(api_key=api_key)
                 st.session_state.analysis_output = ""
                 
-                # Group chunks by document
                 document_groups = {}
                 for chunk in st.session_state.chunks_metadata:
                     source = chunk["source"]
@@ -371,7 +364,6 @@ with tab4:
                         document_groups[source] = []
                     document_groups[source].append(chunk["chunk_text"])
                 
-                # Analyze each document separately
                 for doc_name, doc_chunks in document_groups.items():
                     doc_text = "\n".join(doc_chunks)
                     prompt = f"Analyze this research paper ({doc_name}) and extract the following exactly: Title, Objective, Methodology, Dataset (if any), Results, Limitations, and Future Work.\n\nTEXT:\n{doc_text}"
