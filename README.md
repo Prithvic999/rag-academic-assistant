@@ -46,6 +46,9 @@ Gemini API
 NumPy
 PyPDF
 
+## 🔗 Live Demo
+https://rag-academic-assistant-qtjuvy2p7rawvzkrq6unge.streamlit.app/
+
 📂 Project Structure
 rag-academic-assistant/
 │
