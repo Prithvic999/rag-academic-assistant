@@ -15,25 +15,30 @@ load_dotenv()
 
 st.set_page_config(page_title="RAG Academic Assistant", page_icon="📚", layout="wide")
 
-# Custom CSS for a professional, polished look
+# Custom CSS for a professional, theme-aware look
 st.markdown("""
 <style>
     .main { padding-top: 1rem; }
-    h1 { text-align: center; font-weight: 700; color: #1E3A8A; }
+    h1 { text-align: center; font-weight: 700; }
+    
+    /* Theme-aware Metric Boxes */
     div[data-testid="stMetric"] {
-        background-color: #F3F4F6;
+        background-color: var(--secondary-background-color);
         border-radius: 12px;
         padding: 15px;
-        border: 1px solid #E5E7EB;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }
+    
+    /* Theme-aware Source Cards */
     .source-card {
-        background-color: #F8FAFC;
+        background-color: var(--secondary-background-color);
         border-left: 4px solid #3B82F6;
         padding: 10px 15px;
         margin-bottom: 10px;
         border-radius: 0px 8px 8px 0px;
     }
+    
     footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
