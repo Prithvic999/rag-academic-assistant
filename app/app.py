@@ -311,16 +311,34 @@ with tab2:
     st.header("📝 Automated Document Summary")
     if st.session_state.chunks_metadata:
         if st.button("Generate Summary", key="btn_summary"):
-            with st.spinner("Analyzing and summarizing..."):
-                full_text = "\n".join([chunk["chunk_text"] for chunk in st.session_state.chunks_metadata])
-                prompt = f"Analyze the following academic text. Provide: 1. An Abstract summary, 2. Key findings, 3. Conclusion.\n\nTEXT:\n{full_text}"
+            with st.spinner("Analyzing and summarizing each document separately..."):
                 client = genai.Client(api_key=api_key)
-                st.session_state.summary_output = client.models.generate_content(model='gemini-2.5-flash', contents=prompt).text
+                st.session_state.summary_output = ""
+                
+                # Step 1: Group all text chunks by their specific PDF filename
+                document_groups = {}
+                for chunk in st.session_state.chunks_metadata:
+                    source = chunk["source"]
+                    if source not in document_groups:
+                        document_groups[source] = []
+                    document_groups[source].append(chunk["chunk_text"])
+                
+                # Step 2: Loop through each PDF and ask Gemini to summarize it individually
+                for doc_name, doc_chunks in document_groups.items():
+                    doc_text = "\n".join(doc_chunks)
+                    prompt = f"Analyze the following academic text from the document '{doc_name}'. Provide: 1. An Abstract summary, 2. Key findings, 3. Conclusion.\n\nTEXT:\n{doc_text}"
+                    
+                    try:
+                        response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                        # Add a clean header for each paper so it looks beautiful in the UI
+                        st.session_state.summary_output += f"### 📄 {doc_name}\n{response.text}\n\n---\n\n"
+                    except Exception as e:
+                        st.session_state.summary_output += f"### 📄 {doc_name}\nError generating summary: {e}\n\n---\n\n"
+                        
         if st.session_state.summary_output:
             st.markdown(st.session_state.summary_output)
     else:
         st.info("Upload a document to generate a summary.")
-
 # --- TAB 3: QUESTION GENERATOR ---
 with tab3:
     st.header("❓ Viva & Exam Generator")
