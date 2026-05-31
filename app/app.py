@@ -209,7 +209,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["💬 Interactive Chat", "📝 Document Summar
 
 # --- TAB 1: CHAT INTERFACE ---
 with tab1:
-    # Empty State UI (Sample Questions & Architecture)
+    # Empty State UI (Sample Questions ONLY)
     if not st.session_state.messages and st.session_state.chunks_metadata:
         st.markdown("""
         <div style="text-align: center; margin-top: 40px; margin-bottom: 30px; opacity: 0.8;">
@@ -222,21 +222,6 @@ with tab1:
             </ul>
         </div>
         """, unsafe_allow_html=True)
-        
-        with st.expander("⚙️ View System Architecture"):
-            st.code('''
-    📄 Document Upload
-          ↓
-    ✂️ Text Chunking (500 tokens)
-          ↓
-    🧠 Embedding (all-MiniLM-L6-v2)
-          ↓
-    🗄️ FAISS Semantic Retrieval
-          ↓
-    🤖 LLM Generation (Gemini 2.5 Flash)
-          ↓
-    📚 Grounded Answer + Citations
-            ''', language='text')
 
     # Render existing chat history
     for message in st.session_state.messages:
